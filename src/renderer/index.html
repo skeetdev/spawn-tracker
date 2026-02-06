@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RepopTracker Log Reporter</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 1rem 1.25rem;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+    h1 { margin: 0 0 0.5rem; font-size: 1.25rem; }
+    .section { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.25rem; color: #94a3b8; font-size: 0.875rem; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+    .path-row { display: flex; gap: 0.5rem; }
+    .path-row input { flex: 1; }
+    .row { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    button {
+      padding: 0.5rem 1rem;
+      background: #334155;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    button:hover { background: #475569; }
+    button.primary { background: #2563eb; border-color: #3b82f6; }
+    button.primary:hover { background: #3b82f6; }
+    button.stop { background: #dc2626; border-color: #ef4444; }
+    button.stop:hover { background: #ef4444; }
+    .status { margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 0.5rem; font-size: 0.875rem; color: #94a3b8; }
+    .status.connected { color: #22c55e; }
+    .status.saved { color: #22c55e; }
+    .status.error, .status.invalid_key, .status.file_not_found, .status.missing_config, .status.server_offline { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>RepopTracker Log Reporter</h1>
+
+  <div class="section">
+    <label for="logPath">EQ Log Path</label>
+    <div class="path-row">
+      <input type="text" id="logPath" placeholder="C:\...\eqlog_Character_Project1999.txt" readonly />
+      <button type="button" id="browseBtn">Browse</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <label for="apiKey">Password</label>
+    <input type="password" id="apiKey" placeholder="Password from your admin" />
+  </div>
+
+  <div class="row">
+    <button type="button" id="saveBtn" class="primary">Save</button>
+    <button type="button" id="startStopBtn">Start</button>
+  </div>
+
+  <div id="status" class="status">Stopped.</div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
