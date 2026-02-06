@@ -2,10 +2,12 @@ import path from "path";
 import fs from "fs";
 import { app, BrowserWindow, ipcMain, dialog, Menu } from "electron";
 import Store from "electron-store";
+import dotenv from "dotenv";
 import { parseSlainLine } from "../parser";
 
-/** Set this before building; users never enter the server URL. */
-const SERVER_URL = "http://localhost:4000";
+dotenv.config({ path: path.join(app.getAppPath(), ".env") });
+
+const SERVER_URL = process.env.SERVER_URL ?? "http://localhost:4000";
 
 type Settings = {
   serverUrl: string;

@@ -14,11 +14,12 @@
     "appId": "com.repoptracker.logclient",
     "productName": "RepopTracker Log Reporter",
     "directories": { "output": "out" },
-    "files": ["dist/**/*", "src/renderer/**/*"],
+    "files": ["dist/**/*", "src/renderer/**/*", ".env"],
     "win": { "target": ["nsis", "portable"], "signAndEditExecutable": false },
     "mac": { "target": ["dmg"], "category": "public.app-category.games" }
   },
   "dependencies": {
+    "dotenv": "^16.4.0",
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
