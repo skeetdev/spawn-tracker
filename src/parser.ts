@@ -13,6 +13,13 @@ export interface SlainMatch {
   killedAt: Date;
 }
 
+export interface EarthquakeMatch {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
 export function parseSlainLine(line: string): SlainMatch | null {
   // [PVP] + has killed + npc (optional " in <zone>")
   const pvpRegex =
@@ -70,4 +77,24 @@ export function parseSlainLine(line: string): SlainMatch | null {
   }
 
   return null;
+}
+
+/**
+ * Parse earthquake announcement line to extract duration components.
+ *
+ * Example: "The next earthquake will begin in 3 Days, 20 Hours, 57 Minutes, and 42 Seconds"
+ *
+ * Returns: { days, hours, minutes, seconds } or null if not a match
+ */
+export function parseEarthquakeLine(line: string): EarthquakeMatch | null {
+  const regex = /The next earthquake will begin in (?:(\d+) Days?,\s*)?(?:(\d+) Hours?,\s*)?(?:(\d+) Minutes?,\s*)?(?:and\s+)?(\d+) Seconds?/i;
+  const match = line.match(regex);
+  if (!match) return null;
+
+  const days = match[1] ? parseInt(match[1], 10) : 0;
+  const hours = match[2] ? parseInt(match[2], 10) : 0;
+  const minutes = match[3] ? parseInt(match[3], 10) : 0;
+  const seconds = match[4] ? parseInt(match[4], 10) : 0;
+
+  return { days, hours, minutes, seconds };
 }

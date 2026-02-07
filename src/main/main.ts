@@ -3,7 +3,7 @@ import fs from "fs";
 import { app, BrowserWindow, ipcMain, dialog, Menu } from "electron";
 import Store from "electron-store";
 import dotenv from "dotenv";
-import { parseSlainLine } from "../parser";
+import { parseSlainLine, parseEarthquakeLine } from "../parser";
 
 dotenv.config({ path: path.join(app.getAppPath(), ".env") });
 
@@ -116,6 +116,39 @@ async function reportSlain(settings: Settings, match: { npcName: string; zone?: 
   }
 }
 
+async function reportEarthquake(settings: Settings, logLine: string) {
+  const base = settings.serverUrl.replace(/\/$/, "");
+  const url = `${base}/api/earthquake`;
+  const body = JSON.stringify({
+    logLine,
+    timezone: "GMT-0500", // Eastern time for EQ
+  });
+
+  try {
+    const apiKey = (settings.apiKey ?? "").trim();
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body,
+    });
+
+    if (res.status === 401) {
+      sendToRenderer("connection-status", "invalid_key");
+      return;
+    }
+    if (res.ok) {
+      sendToRenderer("connection-status", "connected");
+    } else {
+      sendToRenderer("connection-status", "error");
+    }
+  } catch (err) {
+    sendToRenderer("connection-status", "error");
+  }
+}
+
 async function startWatching(settings: Settings) {
   stopWatching();
   if (!settings.serverUrl?.trim() || !settings.apiKey?.trim() || !settings.logPath?.trim()) {
@@ -168,6 +201,14 @@ async function startWatching(settings: Settings) {
         logPosition = stats.size;
         const lines = buffer.split(/\r?\n/).filter((l) => l.trim().length > 0);
         for (const line of lines) {
+          // Check for earthquake announcement
+          const earthquakeMatch = parseEarthquakeLine(line);
+          if (earthquakeMatch) {
+            await reportEarthquake(settings, line);
+            continue;
+          }
+
+          // Check for slain events
           const match = parseSlainLine(line);
           if (match) {
             const key = normalizeForDedup(match.npcName);
