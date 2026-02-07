@@ -31,10 +31,17 @@ function getStoredSettings(): Settings {
   };
 }
 
+/** Normalize NPC name for dedup matching between PVP and non-PVP lines */
+function normalizeForDedup(name: string): string {
+  return name.replace(/^#+/, "").replace(/_/g, " ").toLowerCase().trim().replace(/\s+/g, " ");
+}
+
 let mainWindow: BrowserWindow | null = null;
 let watcherTimer: ReturnType<typeof setInterval> | null = null;
 let logPosition = 0;
 let logPath: string | null = null;
+const pendingNonPvp: Map<string, { match: { npcName: string; zone?: string; pvp: number; killedAt: Date }; timeout: ReturnType<typeof setTimeout> }> = new Map();
+const BUFFER_MS = 2000;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -66,6 +73,10 @@ function stopWatching() {
     clearInterval(watcherTimer);
     watcherTimer = null;
   }
+  for (const pending of pendingNonPvp.values()) {
+    clearTimeout(pending.timeout);
+  }
+  pendingNonPvp.clear();
   logPath = null;
   sendToRenderer("connection-status", "stopped");
 }
@@ -159,7 +170,27 @@ async function startWatching(settings: Settings) {
         for (const line of lines) {
           const match = parseSlainLine(line);
           if (match) {
-            await reportSlain(settings, match);
+            const key = normalizeForDedup(match.npcName);
+            if (match.pvp === 1) {
+              // PVP line — report immediately and cancel any buffered non-PVP for the same NPC
+              const pending = pendingNonPvp.get(key);
+              if (pending) {
+                clearTimeout(pending.timeout);
+                pendingNonPvp.delete(key);
+              }
+              await reportSlain(settings, match);
+            } else {
+              // Non-PVP line — buffer it; if no PVP line arrives within the window, report it
+              const existing = pendingNonPvp.get(key);
+              if (existing) {
+                clearTimeout(existing.timeout);
+              }
+              const timeout = setTimeout(() => {
+                pendingNonPvp.delete(key);
+                void reportSlain(settings, match);
+              }, BUFFER_MS);
+              pendingNonPvp.set(key, { match, timeout });
+            }
           }
         }
       }
