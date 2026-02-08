@@ -11,6 +11,8 @@ export interface SlainMatch {
   zone?: string;
   pvp: number;
   killedAt: Date;
+  playerName?: string;
+  guildName?: string;
 }
 
 export interface EarthquakeMatch {
@@ -28,9 +30,11 @@ export function parseSlainLine(line: string): SlainMatch | null {
   if (pvpMatch?.groups?.npc) {
     const npcName = pvpMatch.groups.npc.trim();
     const zone = pvpMatch.groups.zone?.trim();
+    const playerName = pvpMatch.groups.killer?.trim();
     return {
       npcName,
       ...(zone ? { zone } : {}),
+      ...(playerName ? { playerName } : {}),
       pvp: 1,
       killedAt: new Date(),
     };
@@ -39,14 +43,18 @@ export function parseSlainLine(line: string): SlainMatch | null {
   // Guild instance: <someone> tells the guild, '<killer> of <guild> has killed <npc> in <zone>!'
   // This is NOT PvP (guild instances are not PvP)
   const guildRegex =
-    /.+?\s+tells the guild,\s+'(?<killer>.+?)\s+of\s+<.+?>\s+has killed\s+(?<npc>.+?)(?:\s+in\s+(?<zone>.+?))?!'/;
+    /.+?\s+tells the guild,\s+'(?<killer>.+?)\s+of\s+<(?<guild>.+?)>\s+has killed\s+(?<npc>.+?)(?:\s+in\s+(?<zone>.+?))?!'/;
   const guildMatch = line.match(guildRegex);
   if (guildMatch?.groups?.npc) {
     const npcName = guildMatch.groups.npc.trim();
     const zone = guildMatch.groups.zone?.trim();
+    const playerName = guildMatch.groups.killer?.trim();
+    const guildName = guildMatch.groups.guild?.trim();
     return {
       npcName,
       ...(zone ? { zone } : {}),
+      ...(playerName ? { playerName } : {}),
+      ...(guildName ? { guildName } : {}),
       pvp: 0,
       killedAt: new Date(),
     };
@@ -57,8 +65,10 @@ export function parseSlainLine(line: string): SlainMatch | null {
   const slainByMatch = line.match(slainByRegex);
   if (slainByMatch?.groups?.npc) {
     const npcName = slainByMatch.groups.npc.trim();
+    const playerName = slainByMatch.groups.killer?.trim();
     return {
       npcName,
+      ...(playerName ? { playerName } : {}),
       pvp: 0,
       killedAt: new Date(),
     };

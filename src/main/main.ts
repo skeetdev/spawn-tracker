@@ -40,7 +40,7 @@ let mainWindow: BrowserWindow | null = null;
 let watcherTimer: ReturnType<typeof setInterval> | null = null;
 let logPosition = 0;
 let logPath: string | null = null;
-const pendingNonPvp: Map<string, { match: { npcName: string; zone?: string; pvp: number; killedAt: Date }; timeout: ReturnType<typeof setTimeout> }> = new Map();
+const pendingNonPvp: Map<string, { match: { npcName: string; zone?: string; pvp: number; killedAt: Date; playerName?: string; guildName?: string }; timeout: ReturnType<typeof setTimeout> }> = new Map();
 const BUFFER_MS = 2000;
 
 function createWindow() {
@@ -81,7 +81,7 @@ function stopWatching() {
   sendToRenderer("connection-status", "stopped");
 }
 
-async function reportSlain(settings: Settings, match: { npcName: string; zone?: string; pvp: number; killedAt: Date }) {
+async function reportSlain(settings: Settings, match: { npcName: string; zone?: string; pvp: number; killedAt: Date; playerName?: string; guildName?: string }) {
   const base = settings.serverUrl.replace(/\/$/, "");
   const url = `${base}/api/slain`;
   const body = JSON.stringify({
@@ -89,6 +89,8 @@ async function reportSlain(settings: Settings, match: { npcName: string; zone?: 
     ...(match.zone ? { zone: match.zone } : {}),
     pvp: match.pvp,
     killedAt: match.killedAt.toISOString(),
+    ...(match.playerName ? { playerName: match.playerName } : {}),
+    ...(match.guildName ? { guildName: match.guildName } : {}),
   });
 
   try {
