@@ -24,17 +24,20 @@ export interface EarthquakeMatch {
 
 export function parseSlainLine(line: string): SlainMatch | null {
   // [PVP] + has killed + npc (optional " in <zone>")
+  // Can be: "[PVP] Player has killed NPC" or "[PVP] Player of <Guild> has killed NPC in Zone!"
   const pvpRegex =
-    /\[PVP\]\s+(?<killer>.+?)\s+has killed\s+(?<npc>.+?)(?:\s+in\s+(?<zone>.+?))?!$/;
+    /\[PVP\]\s+(?<player>.+?)(?:\s+of\s+<(?<guild>.+?)>)?\s+has killed\s+(?<npc>.+?)(?:\s+in\s+(?<zone>.+?))?!$/;
   const pvpMatch = line.match(pvpRegex);
   if (pvpMatch?.groups?.npc) {
     const npcName = pvpMatch.groups.npc.trim();
     const zone = pvpMatch.groups.zone?.trim();
-    const playerName = pvpMatch.groups.killer?.trim();
+    const playerName = pvpMatch.groups.player?.trim();
+    const guildName = pvpMatch.groups.guild?.trim();
     return {
       npcName,
       ...(zone ? { zone } : {}),
       ...(playerName ? { playerName } : {}),
+      ...(guildName ? { guildName } : {}),
       pvp: 1,
       killedAt: new Date(),
     };
