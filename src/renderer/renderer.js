@@ -5,8 +5,13 @@
   const saveBtn = document.getElementById("saveBtn");
   const startStopBtn = document.getElementById("startStopBtn");
   const statusEl = document.getElementById("status");
+  const debugToggleBtn = document.getElementById("debugToggleBtn");
+  const debugSection = document.getElementById("debugSection");
+  const debugConsole = document.getElementById("debugConsole");
+  const clearDebugBtn = document.getElementById("clearDebugBtn");
 
   let isWatching = false;
+  let debugVisible = false;
 
   const statusMessages = {
     stopped: "Stopped.",
@@ -88,6 +93,40 @@
       updateStartStopButton();
     }
   });
+
+  function addDebugLine(message, type = "info") {
+    const line = document.createElement("div");
+    line.className = `debug-line ${type}`;
+    const timestamp = new Date().toLocaleTimeString();
+    line.textContent = `[${timestamp}] ${message}`;
+    debugConsole.appendChild(line);
+    debugConsole.scrollTop = debugConsole.scrollHeight;
+
+    // Keep only last 500 lines
+    while (debugConsole.children.length > 500) {
+      debugConsole.removeChild(debugConsole.firstChild);
+    }
+  }
+
+  debugToggleBtn.addEventListener("click", () => {
+    debugVisible = !debugVisible;
+    if (debugVisible) {
+      debugSection.classList.add("visible");
+      window.repopApi.setWindowSize(480, 780);
+    } else {
+      debugSection.classList.remove("visible");
+      window.repopApi.setWindowSize(480, 420);
+    }
+  });
+
+  clearDebugBtn.addEventListener("click", () => {
+    debugConsole.innerHTML = "";
+  });
+
+  window.repopApi.onDebugLog((message, type) => {
+    addDebugLine(message, type);
+  });
+
   (async function init() {
     await loadSettings();
   })();

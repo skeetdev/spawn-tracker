@@ -47,6 +47,26 @@
     .status.connected { color: #22c55e; }
     .status.saved { color: #22c55e; }
     .status.error, .status.invalid_key, .status.file_not_found, .status.missing_config, .status.server_offline { color: #f87171; }
+    #debugSection { margin-top: 1rem; display: none; }
+    #debugSection.visible { display: block; }
+    #debugConsole {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.5rem;
+    }
+    .debug-line { margin-bottom: 0.25rem; white-space: pre-wrap; word-break: break-all; }
+    .debug-line.info { color: #60a5fa; }
+    .debug-line.success { color: #22c55e; }
+    .debug-line.error { color: #f87171; }
+    .debug-line.parse { color: #a78bfa; }
+    button.debug { background: #475569; border-color: #64748b; font-size: 0.8rem; padding: 0.4rem 0.75rem; }
   </style>
 </head>
 <body>
@@ -68,9 +88,18 @@
   <div class="row">
     <button type="button" id="saveBtn" class="primary">Save</button>
     <button type="button" id="startStopBtn">Start</button>
+    <button type="button" id="debugToggleBtn" class="debug">Debug Console</button>
   </div>
 
   <div id="status" class="status">Stopped.</div>
+
+  <div id="debugSection">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <label style="margin: 0;">Debug Console</label>
+      <button type="button" id="clearDebugBtn" class="debug" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Clear</button>
+    </div>
+    <div id="debugConsole"></div>
+  </div>
 
   <script src="renderer.js"></script>
 </body>

@@ -68,6 +68,10 @@ function sendToRenderer(channel: string, ...args: unknown[]) {
   }
 }
 
+function debugLog(message: string, type: "info" | "success" | "error" | "parse" = "info") {
+  sendToRenderer("debug-log", message, type);
+}
+
 function stopWatching() {
   if (watcherTimer) {
     clearInterval(watcherTimer);
@@ -84,14 +88,18 @@ function stopWatching() {
 async function reportSlain(settings: Settings, match: { npcName: string; zone?: string; pvp: number; killedAt: Date; playerName?: string; guildName?: string }) {
   const base = settings.serverUrl.replace(/\/$/, "");
   const url = `${base}/api/slain`;
-  const body = JSON.stringify({
+  const bodyData = {
     npcName: match.npcName,
     ...(match.zone ? { zone: match.zone } : {}),
     pvp: match.pvp,
     killedAt: match.killedAt.toISOString(),
     ...(match.playerName ? { playerName: match.playerName } : {}),
     ...(match.guildName ? { guildName: match.guildName } : {}),
-  });
+  };
+  const body = JSON.stringify(bodyData);
+
+  const logMsg = `Reporting: ${match.npcName}${match.playerName ? ` (killed by ${match.playerName}${match.guildName ? ` of <${match.guildName}>` : ""})` : ""}`;
+  debugLog(logMsg, "info");
 
   try {
     const apiKey = (settings.apiKey ?? "").trim();
@@ -105,15 +113,19 @@ async function reportSlain(settings: Settings, match: { npcName: string; zone?: 
     });
 
     if (res.status === 401) {
+      debugLog("API Error: Invalid key (401)", "error");
       sendToRenderer("connection-status", "invalid_key");
       return;
     }
     if (res.ok) {
+      debugLog(" Reported successfully", "success");
       sendToRenderer("connection-status", "connected");
     } else {
+      debugLog(`API Error: ${res.status} ${res.statusText}`, "error");
       sendToRenderer("connection-status", "error");
     }
   } catch (err) {
+    debugLog(`Network Error: ${err instanceof Error ? err.message : String(err)}`, "error");
     sendToRenderer("connection-status", "error");
   }
 }
@@ -126,6 +138,8 @@ async function reportEarthquake(settings: Settings, logLine: string) {
     timezone: "GMT-0500", // Eastern time for EQ
   });
 
+  debugLog("Reporting earthquake announcement", "info");
+
   try {
     const apiKey = (settings.apiKey ?? "").trim();
     const res = await fetch(url, {
@@ -138,15 +152,19 @@ async function reportEarthquake(settings: Settings, logLine: string) {
     });
 
     if (res.status === 401) {
+      debugLog("API Error: Invalid key (401)", "error");
       sendToRenderer("connection-status", "invalid_key");
       return;
     }
     if (res.ok) {
+      debugLog(" Earthquake reported successfully", "success");
       sendToRenderer("connection-status", "connected");
     } else {
+      debugLog(`API Error: ${res.status} ${res.statusText}`, "error");
       sendToRenderer("connection-status", "error");
     }
   } catch (err) {
+    debugLog(`Network Error: ${err instanceof Error ? err.message : String(err)}`, "error");
     sendToRenderer("connection-status", "error");
   }
 }
@@ -159,31 +177,41 @@ async function startWatching(settings: Settings) {
   }
 
   const filePath = settings.logPath.trim();
+  debugLog(`Starting log watcher: ${filePath}`, "info");
+
   try {
     const stats = fs.statSync(filePath);
     logPosition = stats.size;
+    debugLog(`Log file found, size: ${stats.size} bytes`, "info");
   } catch {
+    debugLog("Log file not found", "error");
     sendToRenderer("connection-status", "file_not_found");
     return;
   }
 
   const base = settings.serverUrl.replace(/\/$/, "");
   const healthUrl = `${base}/api/health`;
+  debugLog(`Checking server health: ${base}`, "info");
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(healthUrl, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) {
+      debugLog("Server is offline or unreachable", "error");
       sendToRenderer("connection-status", "server_offline");
       return;
     }
+    debugLog(" Server is online", "success");
   } catch {
+    debugLog("Server connection failed", "error");
     sendToRenderer("connection-status", "server_offline");
     return;
   }
 
   logPath = filePath;
+  debugLog(" Watching started", "success");
   sendToRenderer("connection-status", "connected");
 
   watcherTimer = setInterval(async () => {
@@ -206,6 +234,7 @@ async function startWatching(settings: Settings) {
           // Check for earthquake announcement
           const earthquakeMatch = parseEarthquakeLine(line);
           if (earthquakeMatch) {
+            debugLog(`Parsed: Earthquake (${earthquakeMatch.days}d ${earthquakeMatch.hours}h ${earthquakeMatch.minutes}m ${earthquakeMatch.seconds}s)`, "parse");
             await reportEarthquake(settings, line);
             continue;
           }
@@ -213,6 +242,9 @@ async function startWatching(settings: Settings) {
           // Check for slain events
           const match = parseSlainLine(line);
           if (match) {
+            const killerInfo = match.playerName ? ` by ${match.playerName}${match.guildName ? ` <${match.guildName}>` : ""}` : "";
+            debugLog(`Parsed: ${match.npcName}${killerInfo} [${match.pvp ? "PVP" : "Non-PVP"}]`, "parse");
+
             const key = normalizeForDedup(match.npcName);
             if (match.pvp === 1) {
               // PVP line — report immediately and cancel any buffered non-PVP for the same NPC
@@ -220,6 +252,7 @@ async function startWatching(settings: Settings) {
               if (pending) {
                 clearTimeout(pending.timeout);
                 pendingNonPvp.delete(key);
+                debugLog(`Cancelled buffered non-PVP for ${match.npcName}`, "info");
               }
               await reportSlain(settings, match);
             } else {
@@ -228,6 +261,7 @@ async function startWatching(settings: Settings) {
               if (existing) {
                 clearTimeout(existing.timeout);
               }
+              debugLog(`Buffering non-PVP kill for ${BUFFER_MS}ms`, "info");
               const timeout = setTimeout(() => {
                 pendingNonPvp.delete(key);
                 void reportSlain(settings, match);
@@ -267,6 +301,11 @@ app.whenReady().then(() => {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
+  });
+  ipcMain.handle("set-window-size", (_e, width: number, height: number) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setSize(width, height);
+    }
   });
 });
 
