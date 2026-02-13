@@ -210,6 +210,38 @@ async function startWatching(settings: Settings) {
     return;
   }
 
+  // Validate API key before starting watcher
+  const apiKeyTestUrl = `${base}/api/auth/api-key`;
+  debugLog("Validating API key...", "info");
+
+  try {
+    const apiKey = (settings.apiKey ?? "").trim();
+    const res = await fetch(apiKeyTestUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (res.status === 401) {
+      debugLog("API key validation failed (401)", "error");
+      sendToRenderer("connection-status", "invalid_key");
+      return;
+    }
+
+    if (!res.ok) {
+      debugLog(`API key check failed: ${res.status} ${res.statusText}`, "error");
+      sendToRenderer("connection-status", "error");
+      return;
+    }
+
+    debugLog(" API key is valid", "success");
+  } catch (err) {
+    debugLog(`API key validation error: ${err instanceof Error ? err.message : String(err)}`, "error");
+    sendToRenderer("connection-status", "error");
+    return;
+  }
+
   logPath = filePath;
   debugLog(" Watching started", "success");
   sendToRenderer("connection-status", "connected");
